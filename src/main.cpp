@@ -424,7 +424,7 @@ void publishData(const char *portID, int fromSlaveID, const char *sensorType)
 
       std::string str = std::to_string(fromSlaveID);
       const char *slaveId = str.c_str();
-      pub_topic = "ntsandbox/main/thpost/";
+      pub_topic = "ntsandbox/main/energy/";
       pub_topic += macAddress;
       pub_topic += portID;
       pub_topic += slaveId;
@@ -490,7 +490,7 @@ void publishData(const char *portID, int fromSlaveID, const char *sensorType)
     }
     std::string str = std::to_string(fromSlaveID);
     const char *slaveId = str.c_str();
-    pub_topic = "ntsandbox/main/thpost/";
+    pub_topic = "ntsandbox/main/energy/";
     pub_topic += macAddress;
     pub_topic += portID;
     pub_topic += slaveId;
