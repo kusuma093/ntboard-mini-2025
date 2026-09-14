@@ -1,4 +1,5 @@
 #include "FileSystemOperations.h"
+
 #include <FS.h>
 #include <SD.h>
 #include <SPI.h>
@@ -263,4 +264,3 @@ void testFileIO(fs::FS &fs, const char *path)
     end = millis() - start;
     Serial.printf("%u bytes written for %u ms\n", 2048 * 512, end);
     file.close();
-}

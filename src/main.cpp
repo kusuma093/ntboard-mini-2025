@@ -23,6 +23,7 @@
 
 #include "FileSystemOperations.h"
 
+
 #define RESET_PIN (0)
 
 #define JUMPER_PIN (5)
@@ -57,25 +58,25 @@
 #define REG_CURB 3001
 #define REG_CURC 3003
 
-// #define REG_FQ 3109--
+//#define REG_FQ 3109--
 
-// #define REG_AEDA 2811
-// #define REG_AEDB 2813
-// #define REG_AEDC 2815
-// #define REG_VLAB 3019
+//#define REG_AEDA 2811
+//#define REG_AEDB 2813
+//#define REG_AEDC 2815
+//#define REG_VLAB 3019
 
-// #define REG_VLBC 3021
-// #define REG_VLCA 3023
+//#define REG_VLBC 3021
+//#define REG_VLCA 3023
 
-// #define REG_VLAN 3027
-// #define REG_VLBN 3029
-// #define REG_VLCN 3031
+//#define REG_VLAN 3027
+//#define REG_VLBN 3029
+//#define REG_VLCN 3031
 
-// #define REG_CURN 3005
-// #define REG_CURG 3007
-// #define REG_APA 3053
-// #define REG_APB 3055
-// #define REG_APC 3057
+//#define REG_CURN 3005
+//#define REG_CURG 3007
+//#define REG_APA 3053
+//#define REG_APB 3055
+//#define REG_APC 3057
 
 EthernetUDP ethUdp;
 WiFiUDP wifiUdp;
@@ -99,12 +100,12 @@ bool resetRequired = false;
 unsigned long lastResetCheckTime = 0;
 const unsigned long resetCheckInterval = 1000; // Check reset button every 1 second
 
-const unsigned long sensorInterval = 300 * 1000; // Check every 5 minutes
+const unsigned long sensorInterval = 300 * 1000; // Check every 15 seconds
 const int XYMD02_buadRate = 9600;
 const int PM2230_buadrate = 9600;
 float dataMeter[TOTAL_REG];
 uint16_t regAddr[TOTAL_REG] = {REG_ERG, REG_CUR, REG_VLN, REG_POW, REG_VLLL, REG_CURA,
-                               REG_CURB, REG_CURC, REG_PFT, REG_CUW};
+                                REG_CURB, REG_CURC, REG_PFT, REG_CUW};
 
 const char *logName = "/log.txt";
 String dataMessage;
@@ -116,7 +117,7 @@ const int maxUnknownOrOffCount = 5;                      // Maximum number of co
 int unknownOrOffCount = 0;                               // Counter for consecutive unknown status
 const int maxRetries = 5;
 const int retryDelay = 15 * 1000;
-const char *testHost = "www.google.com";
+const char* testHost = "www.google.com";
 
 const char *mqtt_broker = "broker.ntplc.co.th";
 const char *mqtt_username = "admin";
@@ -136,24 +137,6 @@ int ntpMday, ntpMonth, ntpYear, ntpHour, ntpMin, ntpSec;
 RTC_DATA_ATTR int readingID = 0;
 String dayStamp;
 String timeStamp;
-
-void readEfuseMac()
-{
-  uint64_t chipid = ESP.getEfuseMac();
-
-  for (int i = 0; i < 6; i++)
-  {
-    baseMac[i] = (chipid >> (8 * (5 - i))) & 0xFF;
-  }
-
-  snprintf(macAddress, sizeof(macAddress), 
-            "%02X:%02X:%02X:%02X:%02X:%02X", 
-            baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
-  
-  snprintf(mdnsMac, sizeof(mdnsMac), 
-            "%02X%02X%02X%02X%02X%02X", 
-            baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
-}
 
 void getTimeStamp()
 {
@@ -250,44 +233,35 @@ void performReset()
   }
 }
 
-bool initEthernet()
-{
-  for (int i = 0; i < maxRetries; i++)
-  {
+bool initEthernet() {
+  for (int i = 0; i < maxRetries; i++) {
     Serial.println("Attempting to connect to Ethernet...");
-
-    if (Ethernet.begin(baseMac) == 0)
-    {
+    
+    if (Ethernet.begin(baseMac) == 0) {
       Serial.println("Failed to configure Ethernet using DHCP");
-      continue; // Try again
+      continue;  // Try again
     }
-
+    
     delay(1000); // Give the Ethernet shield a second to initialize
-
-    if (Ethernet.linkStatus() == LinkON)
-    {
+    
+    if (Ethernet.linkStatus() == LinkON) {
       IPAddress ip = Ethernet.localIP();
       Serial.print("IP address assigned: ");
       Serial.println(ip);
-
+      
       // Test internet connectivity
       EthernetClient client;
-      if (client.connect(testHost, 80))
-      {
+      if (client.connect(testHost, 80)) {
         Serial.println("Internet connection verified!");
         client.stop();
         return true;
-      }
-      else
-      {
+      } else {
         Serial.println("Internet connection test failed. Retrying...");
       }
-    }
-    else
-    {
+    } else {
       Serial.println("Ethernet link is down. Retrying...");
     }
-
+    
     delay(retryDelay);
   }
 
@@ -295,57 +269,43 @@ bool initEthernet()
   return false;
 }
 
-bool reconnectToInternet()
-{
-  for (int i = 0; i < maxRetries; i++)
-  {
+bool reconnectToInternet() {
+  for (int i = 0; i < maxRetries; i++) {
     readRTC();
     dataMessage = currentDateTime;
     dataMessage += ", Attempting to reconnect to Internet.";
     Serial.println("Attempting to reconnect Ethernet...");
-
+    
     Ethernet.begin(baseMac); // Attempt to start the Ethernet connection
-
-    if (Ethernet.linkStatus() == LinkON)
-    {
+    
+    if (Ethernet.linkStatus() == LinkON) {
       delay(1000); // Wait a bit for DHCP to complete
-
+      
       IPAddress ip = Ethernet.localIP();
-      if (ip != INADDR_NONE)
-      {
+      if (ip != INADDR_NONE) {
         Serial.print("IP address assigned: ");
         Serial.println(ip);
-
+        
         // Test internet connectivity
-        if (Ethernet.maintain() == 0)
-        {
+        if (Ethernet.maintain() == 0) {
           EthernetClient client;
-          if (client.connect(testHost, 80))
-          {
+          if (client.connect(testHost, 80)) {
             Serial.println("Internet connection verified!");
             client.stop();
             return true;
-          }
-          else
-          {
+          } else {
             dataMessage += ", Internet connection test failed. Retrying...\r\n";
             Serial.println("Internet connection test failed. Retrying...");
           }
-        }
-        else
-        {
+        } else {
           dataMessage += ", DHCP error. Retrying...\r\n";
           Serial.println("DHCP error. Retrying...");
         }
-      }
-      else
-      {
+      } else {
         dataMessage += ", No IP address assigned. Retrying...\r\n";
         Serial.println("Link is up, but no IP address assigned. Retrying...");
       }
-    }
-    else
-    {
+    } else {
       dataMessage += ", Ethernet link is down. Retrying...\r\n";
       Serial.println("Ethernet link is down. Retrying...");
     }
@@ -430,7 +390,7 @@ void publishData(const char *portID, int fromSlaveID, const char *sensorType)
       pub_topic += slaveId;
       pub_topic += "/ems/";
       pub_topic += sensorType;
-      pub_topic += "/test";
+      pub_topic += "/ems";
       Serial.print("Publish topic: ");
       Serial.println(pub_topic);
 
@@ -439,6 +399,7 @@ void publishData(const char *portID, int fromSlaveID, const char *sensorType)
       size_t totalLength = topicLength + jsonSize + 2; // +2 for MQTT overhead
       Serial.print("Topic length: ");
       Serial.println(topicLength);
+      
       Serial.print("Total length: ");
       Serial.println(totalLength);
 
@@ -490,11 +451,11 @@ void publishData(const char *portID, int fromSlaveID, const char *sensorType)
     }
     std::string str = std::to_string(fromSlaveID);
     const char *slaveId = str.c_str();
-    pub_topic = "ntsandbox/main/energy/";
+    pub_topic = "ntsandbox/main/idc/";
     pub_topic += macAddress;
     pub_topic += portID;
     pub_topic += slaveId;
-    pub_topic += "/temphum/";
+    pub_topic += "/ems/";
     pub_topic += sensorType;
     pub_topic += "/test";
     Serial.print("Publish topic: ");
@@ -772,19 +733,13 @@ void setup()
   Wire.begin(21, 22, 100E3);
   SPI.begin(18, 19, 23, -1);
 
-  readEfuseMac();
+  esp_read_mac(baseMac, ESP_MAC_WIFI_SOFTAP);
+  sprintf(macAddress, "%02X:%02X:%02X:%02X:%02X:%02X", baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
   Serial.print("MAC Address: ");
   Serial.println(macAddress);
+  sprintf(mdnsMac, "%02X%02X%02X%02X%02X%02X", baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
   Serial.print("MAC Address for MDNS: ");
   Serial.println(mdnsMac);
-
-  // esp_read_mac(baseMac, ESP_MAC_WIFI_SOFTAP);
-  // sprintf(macAddress, "%02X:%02X:%02X:%02X:%02X:%02X", baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
-  // Serial.print("MAC Address: ");
-  // Serial.println(macAddress);
-  // sprintf(mdnsMac, "%02X%02X%02X%02X%02X%02X", baseMac[0], baseMac[1], baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
-  // Serial.print("MAC Address for MDNS: ");
-  // Serial.println(mdnsMac);
 
   clientId = "ntiot65-";
   clientId += macAddress;
@@ -808,8 +763,7 @@ void setup()
   {
     // Ethernet interface
     Ethernet.init(W5500_CS_PIN);
-    if (initEthernet())
-    {
+    if (initEthernet()) {
       Serial.println("Ethernet initialized successfully!");
       Serial.print("Ethernet connection established., IP address: ");
       Serial.println(Ethernet.localIP());
@@ -817,9 +771,7 @@ void setup()
       timeClient = NTPClient(ethUdp, "0.asia.pool.ntp.org", 25200, 3600);
       timeClient.begin();
       mqttClient.setClient(ethClient);
-    }
-    else
-    {
+    } else {
       Serial.println("Failed to initialize Ethernet. Halting setup.");
       ESP.restart();
     }
@@ -869,8 +821,7 @@ void loop()
     if (currentTime - lastConnectionCheckTime >= connectionCheckInterval)
     {
       lastConnectionCheckTime = currentTime;
-      if (!reconnectToInternet())
-      {
+      if (!reconnectToInternet()) {
         ESP.restart();
       }
     }
