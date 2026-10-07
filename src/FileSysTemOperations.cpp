@@ -3,18 +3,33 @@
 #include <FS.h>
 #include <SD.h>
 #include <SPI.h>
+#include <cstring>
+
+namespace {
+bool sdReady = false;
+void disableSDLogging() {
+    sdReady = false;
+    Serial.println("SD logging disabled; device continues without file logs until restart");
+}
+}
+
+bool isSDCardReady() { return sdReady; }
 
 void initializeSDCard()
 {
+    sdReady = false;
     SPI.begin(18, 19, 23, -1);
     if (!SD.begin(33))
     {
-        Serial.println("Card Mount Failed");
+        Serial.println("SD unavailable; continuing without file logs");
         return;
     }
+    sdReady = SD.cardType() != CARD_NONE;
+    if (!sdReady) Serial.println("No SD card; continuing without file logs");
 }
 
 void checkExists(fs::FS &fs, const char *path) {
+    if (&fs == &SD && !sdReady) return;
     File file = fs.open(path);
     if (!file) {
         Serial.print("File does not exist: ");
@@ -151,42 +166,48 @@ void readFile(fs::FS &fs, const char *path)
 
 void writeFile(fs::FS &fs, const char *path, const char *message)
 {
+    if (&fs == &SD && !sdReady) return;
     Serial.printf("Writing file: %s\n", path);
 
     File file = fs.open(path, FILE_WRITE);
     if (!file)
     {
         Serial.println("Failed to open file for writing");
+        if (&fs == &SD) disableSDLogging();
         return;
     }
-    if (file.print(message))
+    if (file.print(message) == strlen(message))
     {
         Serial.println("File written");
     }
     else
     {
         Serial.println("Write failed");
+        if (&fs == &SD) disableSDLogging();
     }
     file.close();
 }
 
 void appendFile(fs::FS &fs, const char *path, const char *message)
 {
+    if (&fs == &SD && !sdReady) return;
     Serial.printf("Appending to file: %s\n", path);
 
     File file = fs.open(path, FILE_APPEND);
     if (!file)
     {
         Serial.println("Failed to open file for appending");
+        if (&fs == &SD) disableSDLogging();
         return;
     }
-    if (file.print(message))
+    if (file.print(message) == strlen(message))
     {
         Serial.println("Message appended");
     }
     else
     {
         Serial.println("Append failed");
+        if (&fs == &SD) disableSDLogging();
     }
     file.close();
 }
@@ -264,3 +285,5 @@ void testFileIO(fs::FS &fs, const char *path)
     end = millis() - start;
     Serial.printf("%u bytes written for %u ms\n", 2048 * 512, end);
     file.close();
+
+}

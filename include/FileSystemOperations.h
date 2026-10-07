@@ -8,6 +8,7 @@
 #include <SPI.h>
 
 void initializeSDCard();
+bool isSDCardReady();
 void getSDCardType();
 void getSDCardSize();
 void getSDCardUsage();

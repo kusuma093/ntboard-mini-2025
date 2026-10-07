@@ -21,6 +21,7 @@ bool Artron_RTC::begin() {
         Serial.println("RTC chip found PCF8563");
     } else {
         Serial.println("Error, Not found RTC device");
+        return false;
     }
 
     if (this->type == DS1338) {
